@@ -32,6 +32,36 @@ $$ LANGUAGE plpgsql;
 SELECT * FROM pq_numEmpr('rh')
 SELECT * FROM pq_numEmpr('informatica')
 DROP FUNCTION pq_numEmpr
+
+
+/*3) a)
+ROW TYPE: É um tipo de variável especial, que é um tipo de "tupla" vazia relacionado a uma tabela, 
+assim criasse um tipo de dado semelhante a uma struct com os tipos do elementos da tupla determinada.
+
+
+
+%TYPE:  É um tipo de dados que copia/tem sua tipo igual ao tipo de uma coluna.
+
+
+
+RECORD: É um tipo de dado usando quando não se sabe previamente o tipo dos dados usados, 
+funcionando assim como um tipo coringa ou um tipo void.*/
+
+/*b) Construa uma stored procedure que retorne os EMPREGADOS de um DEPARTAMENTO (com o nome fornecido como parâmetro), s
+eus salários e a descrição de TIPO_EMPREGADO.
+
+O parâmetro do nome_dpto, quando não especificado, usa um padrão predefinido: nomes que começam com o prefixo ’In’*/
+
+CREATE OR REPLACE FUNCTION pq_Empr(text) RETURNS setof RECORD AS $$
+BEGIN
+    RETURN QUERY (SELECT * FROM EMPREGADO INNER JOIN departamento ON depto = cod
+    WHERE nome_depto ILIKE $1);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM pq_Empr('rh') as (cpf varchar, nome_empregado varchar, salario numeric, tipo_empregado integer, depto integer,cod integer, nome_depto varchar);
+DROP FUNCTION pq_Empr
+
 -- 9)Construa uma view para retornar o número de empregados de todos os departamentos. 
 --Esta visão é atualizável?
 
