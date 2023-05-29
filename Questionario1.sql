@@ -62,6 +62,62 @@ $$ LANGUAGE plpgsql;
 SELECT * FROM pq_Empr('rh') as (cpf varchar, nome_empregado varchar, salario numeric, tipo_empregado integer, depto integer,cod integer, nome_depto varchar);
 DROP FUNCTION pq_Empr
 
+
+/*4)a) Construa uma trigger para conferir que o supervisor de um empregado não seja ele mesmo 
+– ao inserir ou atualizar um registro da tabela de empregados!
+
+Acrescente os campos necessários na tabela de empregados (auto-relacionamento: campo supervisor)*/
+ALTER TABLE empregado ADD supervisor VARCHAR(100);
+CREATE OR REPLACE FUNCTION pq_Supervisor() 
+RETURNS TRIGGER AS $$
+DECLARE
+	chave_valor varchar;
+	nome varchar;
+	salario numeric;
+	t_e integer;
+	depto integer;
+	supervisor varchar;
+BEGIN
+	chave_valor := TG_ARGV[0];
+	nome := TG_ARGV[1];
+	salario := TG_ARGV[2]::numeric;
+	t_e := TG_ARGV[3]::integer;
+	depto := TG_ARGV[4]::integer;
+	supervisor := TG_ARGV[5];
+	
+	IF (TG_OP = 'INSERT') THEN
+		IF (NEW.supervisor <> chave_valor) THEN
+			INSERT INTO empregado VALUES (NEW.chave, NEW.nome, NEW.salario, NEW.t_e, NEW.depto, NEW.supervisor);
+		ELSE
+			RAISE EXCEPTION 'Um supervisor não pode supervisionar a si mesmo';
+			RETURN NULL;
+		END IF;
+		RETURN NEW;
+	END IF;
+	
+	IF (TG_OP = 'UPDATE') THEN
+		IF (NEW.supervisor <> OLD.chave) THEN
+			UPDATE empregado SET supervisor = NEW.supervisor;
+		ELSE
+			RAISE EXCEPTION 'Um supervisor não pode supervisionar a si mesmo';
+			RETURN NULL;
+		END IF;
+	END IF;
+	
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE OR REPLACE TRIGGER tg_supervisor BEFORE INSERT OR UPDATE ON empregado
+FOR EACH ROW EXECUTE PROCEDURE pq_Supervisor()
+
+DROP FUNCTION pq_Supervisor() CASCADE;
+DROP TRIGGER tg_supervisor ON DATABASE;
+
+INSERT INTO empregado
+VALUES (65345678919,'Vandeee', 65.0, 10, 10,1);
+
+	
+
 -- 9)Construa uma view para retornar o número de empregados de todos os departamentos. 
 --Esta visão é atualizável?
 
