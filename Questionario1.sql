@@ -96,9 +96,6 @@ BEGIN
             RETURN NULL;
         END IF;
         
-        INSERT INTO empregado (cpf, nome_empregado, salario, tipo_empregado, depto, supervisor)
-        VALUES (cpf, nome_empregado, salario, tipo_empregado, depto, supervisor);
-        
         RETURN NEW;
     END IF;
 
@@ -107,8 +104,6 @@ BEGIN
             RAISE EXCEPTION 'Um supervisor não pode supervisionar a si mesmo';
             RETURN NULL;
         END IF;
-        
-        UPDATE empregado SET supervisor = NEW.supervisor WHERE cpf = NEW.cpf;
         
         RETURN NEW;
     END IF;
@@ -128,11 +123,35 @@ DROP TRIGGER IF EXISTS tg_supervisor ON empregado;
 INSERT INTO empregado
 VALUES (65345678919,'Vandeee', 65.0, 10, 10, 65345678910);
 
-	
+INSERT INTO empregado
+VALUES (65345678919,'Vandeee', 65.0, 10, 10, 65345678919);
+
+UPDATE empregado SET supervisor = '65345678919' WHERE cpf = '65345678919'
+UPDATE empregado SET supervisor = '65345678919' WHERE cpf = '65345678917'
+
+/*4c)  Construa uma view para retornar o número de empregados de todos os departamentos. 
+Esta visão é atualizável?*/
+CREATE VIEW numEmpr AS 
+SELECT COUNT(*)
+FROM empregado
+WHERE depto IS NOT NULL
+SELECT * FROM numEmpr
+--Esta view é atualizada automaticamente.
+
+INSERT INTO empregado
+VALUES (92345678919,'Vand', 65.0, 10, 10);
+SELECT * FROM numEmpr
+/*4d) Crie uma tabela temporária para inserir todos os funcionários com a descrição do seu cargo 
+(tipo de empregado)*/	
+
+CREATE VIEW funcionario_ AS
+SELECT descricao, nome_empregado
+FROM empregado INNER JOIN tipo_empregado ON depto = cod
+
+select * from funcionario_
 
 -- 9)Construa uma view para retornar o número de empregados de todos os departamentos. 
 --Esta visão é atualizável?
-
 
 CREATE VIEW numEmpr AS
 SELECT COUNT(*)
