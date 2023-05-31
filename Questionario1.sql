@@ -129,6 +129,49 @@ VALUES (65345678919,'Vandeee', 65.0, 10, 10, 65345678919);
 UPDATE empregado SET supervisor = '65345678919' WHERE cpf = '65345678919'
 UPDATE empregado SET supervisor = '65345678919' WHERE cpf = '65345678917'
 
+
+/* 4b) Construa uma trigger para atualizar o número de empregados de um departamento – 
+ao inserir, remover ou atualizar o campo de lotação da tabela de empregados!
+Acrescente os campos necessários na tabela de departamentos (relacionamento: campo num_empregados)*/
+
+ALTER TABLE departamento ADD num_empregados INT DEFAULT 0;
+
+CREATE OR REPLACE FUNCTION pq_atualizarNumEmpregado() RETURNS TRIGGER AS $$
+BEGIN
+    cpf := TG_ARGV[0];
+    nome_empregado := TG_ARGV[1];
+    salario := TG_ARGV[2]::numeric;
+    tipo_empregado := TG_ARGV[3]::integer;
+    depto := TG_ARGV[4]::integer;
+    supervisor := TG_ARGV[5];
+	
+	 IF (NEW.trigger_executado = TRUE) THEN
+        RETURN NEW;
+    END IF;
+	
+    IF (TG_OP = 'INSERT') THEN
+        IF (NEW.cpf = NEW.supervisor) THEN
+            RAISE EXCEPTION 'Um supervisor não pode supervisionar a si mesmo';
+            RETURN NULL;
+        END IF;
+        
+        RETURN NEW;
+    END IF;
+
+    IF (TG_OP = 'UPDATE') THEN
+        IF (OLD.cpf = NEW.supervisor) THEN
+            RAISE EXCEPTION 'Um supervisor não pode supervisionar a si mesmo';
+            RETURN NULL;
+        END IF;
+        
+        RETURN NEW;
+    END IF;
+	
+	 NEW.trigger_executado := TRUE;
+    -- Outras operações, como DELETE, não são tratadas nessa função
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 /*4c)  Construa uma view para retornar o número de empregados de todos os departamentos. 
 Esta visão é atualizável?*/
 CREATE VIEW numEmpr AS 
@@ -178,3 +221,30 @@ VALUES ('Ariel', 'financeiro', 'contador', 107.34);
  --b) Selecione a descrição dos departamentos que possuem algum empregado com salário > R$500.
 SELECT descricao, salario FROM dados_empr
 WHERE salario>500
+
+
+/*Cursores*/
+
+/*Consulte todos os engenheiros com 2 ou mais projetos.
+
+1. Crie um atributo “projetos” para armazenar os projetos (em
+que o engenheiro participa) na tabela de empregados, que é
+somente preenchido para os empregados de tipo
+‘engenheiro’.*/
+
+ALTER TABLE empregados ADD projetos INTEGER[];
+CREATE TABLE projetos(
+
+    cod int,
+    
+);PRIMARY KEY(cod)
+
+CREATE TABLE engenheiro_projetos(
+    cod_eng int NOT NULL 
+    cod_proj int NOT NULL 
+    FOREIGN KEY (cod_eng) REFERENCES empregado(cpf)
+    ON DELETE SET NULL
+    FOREIGN KEY (cod_proj) REFERENCES projetos(cod)
+    ON DELETE SET NULL
+); 
+
