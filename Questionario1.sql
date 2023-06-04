@@ -232,7 +232,8 @@ que o engenheiro participa) na tabela de empregados, que é
 somente preenchido para os empregados de tipo
 ‘engenheiro’.*/
 
-ALTER TABLE empregados ADD projetos INTEGER[];
+ALTER TABLE empregado ADD projetos varchar;
+ALTER TABLE empregado DROP COLUMN projetos;
 CREATE TABLE projetos(
 
     cod int,
@@ -246,5 +247,45 @@ CREATE TABLE engenheiro_projetos(
     ON DELETE SET NULL
     FOREIGN KEY (cod_proj) REFERENCES projetos(cod)
     ON DELETE SET NULL
-); 
+);
 
+
+
+CREATE OR REPLACE FUNCTION CursorEng() RETURNS SETOF RECORD AS $$
+DECLARE
+	registro empregado%ROWTYPE;
+    num_pg INTEGER;
+    i INT DEFAULT 0;
+	crs_1fn_engenheiro CURSOR FOR
+		SELECT cpf
+		FROM empregado E INNER JOIN tipo_empregado T ON E.tipo_empregado = T.cod
+		WHERE T.descricao ILIKE 'engenheiro';
+BEGIN
+    OPEN crs_1fn_engenheiro;
+
+    LOOP
+        FETCH NEXT FROM crs_1fn_engenheiro INTO registro;
+        EXIT WHEN NOT FOUND;
+		
+        IF (registro.projetos LIKE '%;%') THEN
+            RETURN NEXT registro;
+        END IF;
+
+        i := i + 1;
+    END LOOP;
+
+    CLOSE crs_1fn_engenheiro;
+    RETURN;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP FUNCTION CursorEng()
+
+SELECT * FROM CursorEng() AS (cpf varchar, nome_empregado varchar, salario numeric, 
+								 tipo_empregado integer, depto integer,cod integer, nome_depto varchar, 
+								 projetos varchar);
+
+UPDATE empregado SET projetos = '%;%' WHERE cpf LIKE '92345678919'
+UPDATE empregado SET tipo_empregado = 1 WHERE cpf LIKE '92345678919'
+
+SELECT * FROM empregado WHERE cpf LIKE '92345678919'
