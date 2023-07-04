@@ -8,10 +8,10 @@ import numpy as np
 def conectar_banco_dados():
     try:
         conn = psycopg2.connect(
-            host="localhost",
-            database="projeto_sbd",
-            user="andre_portella",
-            password="728099"
+            host="",
+            database="",
+            user="",
+            password=""
         )
         return conn
     except psycopg2.Error as e:

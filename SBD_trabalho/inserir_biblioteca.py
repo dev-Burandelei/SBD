@@ -6,10 +6,10 @@ import psycopg2
 def conectar_banco_dados():
     try:
         conn = psycopg2.connect(
-            host="localhost",
-            database="projeto_sbd",
-            user="andre_portella",
-            password="728099"
+            host="hostname",
+            database="database",
+            user="user",
+            password="password"
         )
         return conn
     except psycopg2.Error as e:
