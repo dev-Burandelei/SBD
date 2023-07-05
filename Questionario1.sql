@@ -289,3 +289,50 @@ UPDATE empregado SET projetos = '%;%' WHERE cpf LIKE '92345678919'
 UPDATE empregado SET tipo_empregado = 1 WHERE cpf LIKE '92345678919'
 
 SELECT * FROM empregado WHERE cpf LIKE '92345678919'
+
+/* Crie uma função showdb que lista
+todos os bancos de dados no servidor (visualizar apenas o nome e o dono do BD).*/
+CREATE OR REPLACE FUNCTION showdb() RETURNS setof RECORD AS $$
+BEGIN 
+
+	RETURN QUERY(
+
+		SELECT datname, rolname
+		FROM pg_database JOIN pg_roles ON pg_database.datdba = pg_roles.oid);
+END;
+
+
+$$LANGUAGE plpgsql;
+
+DROP FUNCTION showdb()
+SELECT * FROM showdb() as (datname name, rolname name)
+
+
+
+ /* Crie uma função showtable que descreve uma tabela: mostra as informações sobre as colunas da tabela 
+ passada como parâmetro (visualizar nome do campo, tipo de dado  e se tem restrição de not null ou não). 
+ Obs.: O nome da tabela do resultado entregue deve começar com a terceira letra do seu primeiro nome! */
+
+CREATE OR REPLACE FUNCTION showtable(tablename TEXT) 
+RETURNS table(column_name TEXT, data_type TEXT, is_nullable TEXT) AS $$
+
+BEGIN
+
+  RETURN QUERY
+    EXECUTE 'SELECT column_name::TEXT, data_type::TEXT, is_nullable::TEXT 
+	FROM information_schema.columns WHERE table_name = $1'
+    USING tablename;
+END;
+
+$$LANGUAGE plpgsql;
+
+
+DROP FUNCTION showtable()
+DROP FUNCTION IF EXISTS showtable(TEXT);
+SELECT * FROM showtable('empregado')
+
+--Funcionamento de EXPLAIN e EXPLAIN ANALYZE--
+EXPLAIN SELECT * FROM showtable('empregado')
+
+EXPLAIN ANALYZE SELECT * FROM showtable('empregado')
+SELECT * FROM pg_statistic
