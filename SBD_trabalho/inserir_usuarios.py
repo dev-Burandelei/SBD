@@ -1,22 +1,3 @@
-import random
-import psycopg2
-from faker import Faker
-
-# Conexão com o banco de dados PostgreSQL
-# Substitua as informações de conexão com o seu banco de dados específico
-def conectar_banco_dados():
-    try:
-        conn = psycopg2.connect(
-            host="hostname",
-            database="database",
-            user="user",
-            password="password"
-        )
-        return conn
-    except psycopg2.Error as e:
-        print("Erro ao conectar ao PostgreSQL:", e)
-        exit(1)
-
 # Gerar dados aleatórios para usuários
 def gerar_dados_usuarios(num_users):
     fake = Faker()
@@ -25,7 +6,7 @@ def gerar_dados_usuarios(num_users):
         cpf = str(12347229939 + i)
         nome = fake.first_name()
         sobrenome = fake.last_name()
-        status = random.choice(['online', 'offline'])  # Seleciona aleatoriamente entre "online" e "offline"
+        status = random.choice(['online', 'offline', 'ocupado', 'ausente'])  # Seleciona aleatoriamente entre "online" e "offline"
         data_nascimento = fake.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d')
         email = f"{nome.lower()}.{sobrenome.lower()}@email.com"
         saldo = round(random.gauss(1000, 170), 2)
