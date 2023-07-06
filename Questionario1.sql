@@ -223,6 +223,7 @@ SELECT descricao, salario FROM dados_empr
 WHERE salario>500
 
 
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 /*Cursores*/
 
 /*Consulte todos os engenheiros com 2 ou mais projetos.
@@ -290,6 +291,8 @@ UPDATE empregado SET tipo_empregado = 1 WHERE cpf LIKE '92345678919'
 
 SELECT * FROM empregado WHERE cpf LIKE '92345678919'
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 /* Crie uma função showdb que lista
 todos os bancos de dados no servidor (visualizar apenas o nome e o dono do BD).*/
 CREATE OR REPLACE FUNCTION showdb() RETURNS setof RECORD AS $$
@@ -336,3 +339,74 @@ EXPLAIN SELECT * FROM showtable('empregado')
 
 EXPLAIN ANALYZE SELECT * FROM showtable('empregado')
 SELECT * FROM pg_statistic
+
+/*Você só pode usar esta palavra-chave junto com ANALYZE, 
+e mostra quantos blocos de 8kB cada etapa lê, escreve e suja. Você sempre quer isso.*/
+
+EXPLAIN(ANALYZE, BUFFERS) SELECT * FROM showtable('empregado')
+
+/*EXPLAIN fornecerá: o custo estimado, o número estimado de linhas e o tamanho estimado da linha de resultado médio. 
+A unidade para o custo estimado da consulta é artificial (1 é o custo para ler uma página de 8kB durante uma varredura sequencial). 
+Existem dois valores de custo: o custo inicial (custo para retornar a primeira linha) e o custo total (custo para retornar todas as linhas).*/
+
+
+/*ANALYZE fornece um segundo parêntese com o tempo de execução real em milissegundos,
+a contagem de linha real e uma contagem de loop que mostra com que frequência esse nó foi executado. 
+Ele também mostra o número de linhas que os filtros removeram*/
+
+EXPLAIN ANALYZE SELECT * FROM showtable('empregado')
+EXPLAIN ANALYZE SELECT * FROM empregado
+
+
+ /*Primeiro, você deve entender que um plano de execução do PostgreSQL é uma estrutura em árvore composta por vários nós . 
+ O nó superior (o Aggregateacima) está no topo e os nós inferiores são recuados e começam com uma seta ( ->). 
+ Nós com o mesmo recuo estão no mesmo nível (por exemplo, as duas relações combinadas com uma junção)*/
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+ /*O custo estimado é calculado como (páginas de disco lidas * seq_page_cost ) + (linhas verificadas * cpu_tuple_cost ). 
+ Por padrão, seq_page_costé 1,0 e cpu_tuple_costé 0,01, portanto, o custo estimado é (358 * 1,0) + (10000 * 0,01) = 458.*/
+
+
+-- relpages número total de paginas de disco--
+-- reltuplas número total de tuplas-- 
+SELECT relpages, reltuples FROM pg_class WHERE relname = 'empregado'
+--relpages = 16682
+--reltuples = 2 * 10^6
+
+CREATE OR REPLACE FUNCTION calcular_custo_estimado(nome  TEXT) RETURNS INTEGER AS $$
+DECLARE         
+    relpages INTEGER := (SELECT relpages FROM pg_class WHERE relname = nome);
+    reltuples INTEGER := (SELECT reltuples FROM pg_class WHERE relname = nome);
+	seq_page_cost FLOAT := current_setting('seq_page_cost')::FLOAT;
+	cpu_tuple_cost FLOAT := current_setting('cpu_tuple_cost')::FLOAT;
+BEGIN
+    
+    RETURN (relpages * seq_page_cost) + (reltuples * cpu_tuple_cost);
+
+END;
+$$LANGUAGE plpgsql;
+DROP FUNCTION calcular_custo_estimado(TEXT)
+SELECT * FROM calcular_custo_estimado('empregado')
+
+
+
+/*O current_setting() aceita o nome de uma opção de configuração como parâmetro e retorna o valor atual dessa opção como uma string. 
+É útil quando você precisa acessar dinamicamente os valores de configuração dentro de uma função ou consulta SQL.*/
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+EXPLAIN ANALYZE SELECT * FROM empregado WHERE depto = 10
+
+/*EXPLAIN saída mostra a WHERE cláusula sendo aplicada como uma condição de “ filtro ” anexada ao nó do plano Seq Scan.
+Isso significa que o nó do plano verifica a condição para cada linha que varre e gera apenas aquelas que passam na condição.
+A estimativa de linhas de saída foi reduzida por causa da WHERE cláusula. No entanto, a varredura ainda terá que visitar todas as 10.000 linhas,
+portanto, o custo não diminuiu; na verdade, 
+aumentou um pouco (em 10000 * cpu_operator_cost , para ser exato) para refletir o tempo extra de CPU gasto na verificação da WHERE condição.*/
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+CREATE INDEX TABLE nome_empregado
+
+EXPLAIN ANALYZE SELECT * FROM empregado WHERE depto = 10
