@@ -410,3 +410,127 @@ aumentou um pouco (em 10000 * cpu_operator_cost , para ser exato) para refletir 
 CREATE INDEX TABLE nome_empregado
 
 EXPLAIN ANALYZE SELECT * FROM empregado WHERE depto = 10
+
+
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+/*Para agilizar seu andamento, uma vez criados os índices, ao invés de remover (drop) /criar (create) de novo, use:
+
+-- COMANDOS PARA HABILITAR/DESABILITAR INDICES
+
+SET enable_indexscan to OFF;
+SET enable_bitmapscan to OFF;
+
+SET enable_indexscan to ON;
+SET enable_bitmapscan to ON;
+*/
+
+/*
+1- Se ainda não restaurou o BD de empresa, faça isso agora! 
+
+*Importação simples via linha de comando
+
+-u postgres psql -d <banco_de_destino> -f <arquivo_de_origem>
+
+Resposta: feito durante o questionario de "resivão e aquecimento SQL"
+*/
+
+--2- Faça uma consulta que selecione os dados dos empregados de nome "Mary".
+SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary'
+
+--2.1 Anote o tempo de processamento.
+
+/* a busca foi concluida em 0.791 segundos.*/
+
+--2.2 Escreva quantas tuplas recuperou.
+
+-- 3539 tuplas
+
+--2.3 Aplique a instrução EXPLAIN (ou melhor EXPLAIN ANALYZE) 
+--para observar o plano de execução da consulta. Insira o plano da consulta na resposta.
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary'
+
+--2.4 Quantas tuplas varreu? Anote.
+
+--9.871 tuplas percorridas e 665488 tuplas removidas pelo filtro 
+
+/*3- Faça uma consulta que selecione os dados dos empregados de nome "Mary" OU
+dos empregados do departamento 10 (use operador lógico OR). Anote a instrução SQL.*/
+
+SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' OR depto = 10
+
+--3.1 Anote o tempo de processamento.
+--0.705 segundos 
+
+/*3.2 Aplique a instrução EXPLAIN (ou melhor EXPLAIN ANALYZE) 
+para observar o plano de execução da consulta.  Insira o plano da consulta na resposta.*/
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' OR depto = 10
+
+/*3.3 Faça um UNION das condições e repita o processo de observação em 3.1 e 3.2. 
+Explique comparando os planos das consultas qual das duas consultas você escolheria 
+(baseado no plano de execução com índices criados)? Mostre os planos de consulta usados na explicação.*/
+
+SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' UNION 
+SELECT * FROM empregado
+WHERE depto = 10
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' UNION 
+SELECT * FROM empregado
+WHERE depto = 10
+
+/*RESPOSTA: O plano de consulta com o operador logico “OR” é mais eficiente em relação ao operador 
+“UNION”, com o tempo de execução de 0.705 segundos contra o de 0.953 segundos. 
+Além disso, o filtro aplicado na consulta “OR” removeu 635976 tuplas com a aplicação simultânea dos 
+dois filtros, enquanto a do UNION removeu 665488 tuplas pela aplicação de um filtro “nome = “mary” 
+e 1911336 tuplas pela aplicação do filtro depto = 10.
+
+Assim, é Observável que a consulta “OR” é mais eficiente uma vez que aplica os filtros de forma simultâneo,
+enquanto a consulta UNION trabalha com os filtros de forma independentes,
+o que pode causar redundância em relação as tuplas varridas que serão removidas.*/
+
+/*4- Crie um índice sobre o nome de empregado. Escreva a instrução SQL.
+Observe e anote o tempo de criação do índice! */
+
+CREATE INDEX nome_empregrado_idx ON empregado USING Btree (nome_empregado)
+--3 segundos e 562 mili segundos para se criar os índices	
+
+--4.1 Qual o método de indexação (ED) que você usou?
+
+--O método adotado foi a utilização da estrutura de dados “B-tree”.
+
+
+/*5- Repita 2 e 3. Comente sobre as diferenças dos planos de consulta, se houver.*/
+
+CREATE INDEX mary_empregado_idx ON empregado USING Hash (nome_empregado)
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary'
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' OR depto = 10
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' UNION 
+SELECT * FROM empregado
+WHERE depto = 10
+
+
+--6- Repita a consulta do item 3 agora usando AND (ao invés de OR). Escreva a instrução SQL. 
+
+SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' AND depto = 10
+
+--6.1 O plano de execução usou o índice? Insira o plano da consulta na resposta.
+
+-- O plano não usou o índice.
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' AND depto = 10
