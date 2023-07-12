@@ -532,5 +532,66 @@ WHERE nome_empregado ILIKE 'Mary' AND depto = 10
 --6.1 O plano de execução usou o índice? Insira o plano da consulta na resposta.
 
 -- O plano não usou o índice.
+
+SET enable_indexscan to ON;
+SET enable_bitmapscan to ON;
 EXPLAIN ANALYZE SELECT * FROM empregado
 WHERE nome_empregado ILIKE 'Mary' AND depto = 10
+
+SELECT *
+FROM pg_indexes
+WHERE tablename LIKE 'mary_empregado_idx'
+
+/* 6.2 A varredura da segunda condição aconteceu encima do arquivo de dados ou do índice? Explique.
+
+Resposta: Pelo plano de execução fornecido, a varredura ocorreu encima do arquivo de dados,
+uma vez que o plano de execução não possui nenhum indicativo que alguns índice foi usado na busca.*/
+
+/*7- Consulte todos os empregados cujo nome começa com a letra M. Anote a instrução SQL.*/
+
+SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'M%'
+
+/*7.1- Observe e insira o plano de execução e explique se o plano usou o índice. */
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'M%'
+
+/*8- Consulte todos os empregados que tem "an" como substring do nome. Anote a instrução SQL.*/
+
+SELECT * FROM empregado
+WHERE nome_empregado ILIKE '%an%'
+
+--8.1- Observe e insira o plano de execução e explique se o plano de execução usou o índice. Por quê?
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado LIKE '%an%'
+
+--8.2- Repita a consulta com o operador ILIKE. Anote a instrução SQL. O que observou?
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE '%an%'
+
+/*9- Acrescente uma ordenação pelo nome do empregado às consultas dos itens 7 e 8. 
+Anote a instrução SQL. */
+
+SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'M%'
+ORDER BY nome_empregado
+
+SELECT * FROM empregado
+WHERE nome_empregado LIKE '%an%'
+ORDER BY nome_empregado
+
+--9.1- O que acontece no plano de execução. Por quê? Mostre os planos.
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'M%'
+ORDER BY nome_empregado
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE '%an%'
+ORDER BY nome_empregado
+
+/*10- Crie um índice composto BTree para os campos nome_empregado e depto (nessa ordem). 
+Escreva a instrução SQL.*/
+
+CREATE INDEX empregado_depto_idx ON empregado USING Btree (nome_empregado, depto)
