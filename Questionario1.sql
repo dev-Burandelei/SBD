@@ -595,3 +595,174 @@ ORDER BY nome_empregado
 Escreva a instrução SQL.*/
 
 CREATE INDEX empregado_depto_idx ON empregado USING Btree (nome_empregado, depto)
+
+--11- Execute as consultas nos itens 6 e 7.
+SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'M%'
+
+SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' AND depto = 10
+
+--11.1- Qual índice foi utilizado no plano de execução?
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'M%'
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' AND depto = 10
+
+/*11.3- Substitua o AND da condição pelo OR. O que acontece? Por quê?
+(considere na resposta os dois índices: o simples e o composto). 
+Mostre o plano da consulta.*/
+
+EXPLAIN ANALYZE SELECT * FROM empregado
+WHERE nome_empregado ILIKE 'Mary' OR depto = 10
+
+/*12- Execute a consulta que retorna os nomes dos empregados do departamento de contabilidade
+(use a condição de junção na cláusula WHERE). Escreva a instrução SQL.*/
+
+SELECT nome_empregado FROM empregado E INNER JOIN departamento D ON E.depto = D.cod
+WHERE nome_depto LIKE 'contabilidade'
+
+/*12.1- Você consegue melhorar o desempenho da consulta? 
+Tente criar um índice no atributo depto (campo da junção) da tabela de empregados. 
+Explique mostrando os planos de consulta.*/]
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado FROM empregado E INNER JOIN departamento D ON E.depto = D.cod
+WHERE nome_depto LIKE 'contabilidade'
+
+CREATE INDEX depto_idx ON empregado USING hash (depto)
+
+/*13- Refaça a consulta do item 12 usando o operador de conjuntos IN. Escreva a instrução SQL. */
+SELECT nome_empregado FROM empregado 
+WHERE depto IN (SELECT cod FROM departamento 
+			   WHERE nome_depto ILIKE 'contabilidade')
+			   
+/*13.1- Compare os planos de execução das duas consultas. Mostre os planos*/
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado FROM empregado 
+WHERE depto IN (SELECT cod FROM departamento 
+			   WHERE nome_depto ILIKE 'contabilidade')
+			   
+/*13.2- Refaça a consulta usando o operador = (ao invés do IN). 
+Escreva a instrução SQL. Mostre os planos. Compare de novo. Anote o tempo de execução.*/
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado FROM empregado 
+WHERE depto = (SELECT cod FROM departamento 
+			   WHERE nome_depto ILIKE 'contabilidade')
+			   
+/*14- Existe algum outro recurso que você possa estar utilizando para melhorar 
+ainda mais o tempo de execução das consultas dos itens 12 e 13? Qual? Teste! Fez diferença?
+Por quê? Mostre o plano da consulta!  */
+
+CREATE MATERIALIZED VIEW depto_conatabilidade AS
+SELECT nome_empregado, cod FROM Empregado E INNER JOIN departamento D ON E.depto = D.cod 
+WHERE nome_depto ILIKE 'contabilidade'
+
+DROP MATERIALIZED VIEW depto_conatabilidade
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado FROM depto_conatabilidade 
+
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado FROM empregado 
+WHERE depto IN (SELECT cod FROM departamento 
+			   WHERE nome_depto ILIKE 'contabilidade')
+			   
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado FROM empregado 
+WHERE depto IN (SELECT cod FROM departamento 
+			   WHERE nome_depto LIKE 'contabilidade')
+			   
+
+/*15- Refaça a consulta do item 12 usando a cláusula inner join no FROM. 
+Alguma diferença no plano da consulta? Mostre a instrução SQL e o plano. */
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado FROM empregado E INNER JOIN departamento D ON E.depto = D.cod
+WHERE nome_depto LIKE 'contabilidade'
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado FROM empregado 
+WHERE depto IN (SELECT cod FROM departamento 
+			   WHERE nome_depto LIKE 'contabilidade')
+			   
+/*15.1- Inclua a condição "departamento de contabilidade" no FROM. 
+Alguma diferença? Mostre a instrução SQL e o plano. */
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado FROM empregado E INNER JOIN departamento D 
+ON E.depto = D.cod AND D.nome_depto LIKE 'contabilidade'
+WHERE nome_depto LIKE 'contabilidade'
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado FROM empregado E INNER JOIN departamento D 
+ON  D.nome_depto LIKE 'contabilidade' AND E.depto = D.cod
+WHERE nome_depto LIKE 'contabilidade'
+
+/*16- Acrescente mais uma condição à consulta do item 12:
+E tipo de empregado é contador. Mostre a instrução SQL e o plano.*/
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado,tipo_empregado, depto FROM empregado E INNER JOIN departamento D
+ON  D.nome_depto LIKE 'contabilidade' AND
+tipo_empregado IN (SELECT cod FROM tipo_empregado WHERE descricao = 'contador')
+AND E.depto = D.cod
+WHERE nome_depto LIKE 'contabilidade' AND tipo_empregado <> 10
+
+
+--17- Consulte os empregados com salário maior que 1000 reais. Mostre a instrução SQL. 
+
+SELECT * FROM empregado
+WHERE salario > 1000
+
+/*17.2- Melhora se criarmos um índice  sobre o campo salario? 
+Observe o tempo de criação do índice. O plano de consulta contém o índice criado?
+Por quê? Mostre o plano.*/
+
+CREATE INDEX salario_UP1000_idx ON empregado (salario) WHERE salario > 1000
+DROP INDEX salario_UP1000_idx
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT * FROM empregado
+WHERE salario > 1000
+
+/*17.4- Faça agora a consulta para salários menores que 1000 reais. 
+O plano de consulta contém o índice criado? Por quê? Mostre a instrução SQL e o plano. */
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT * FROM empregado
+WHERE salario < 1000
+
+/*17.5- Avalie se a mesma explicação se aplica para as consultas:
+recupere os dados de empregados dos departamentos 10 ao 20. E do 10 ao 30? 
+Mostre as instruções SQL e os planos.*/
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT * FROM empregado
+WHERE depto BETWEEN  10 AND 20
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT * FROM empregado
+WHERE depto BETWEEN  10 AND 30
+
+/*18- Procure o mínimo e máximo salário dos empregados da empresa. 
+Mostre a instrução SQL. (podem ser duas consultas separadas ou apenas uma consulta!)
+*/
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT MIN(salario), MAX(salario)
+FROM empregado
+
+/*19- Construa outras consultas que usem as cláusulas de ORDER BY, GROUP BY ou DISTINCT.
+Procure explicações relacionadas aos algoritmos e recursos utilizados nos planos de consulta. 
+Em todos os casos, mostre a instrução SQL e o plano. */
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT nome_empregado, salario
+FROM empregado
+ORDER BY salario
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT salario,COUNT(nome_empregado)
+FROM empregado
+GROUP BY salario
+HAVING salario > 1000
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT DISTINCT depto
+FROM empregado
+
+/*20- Crie consulta com duas soluções SQL equivalentes 
+(por exemplo: usando junção, usando aninhamento de consultas).
+Qual das duas consultas SQL você escolheria para implementação 
+(baseado no plano de execução com índices)? Em todos os casos, mostre a instrução SQL e o plano. */
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT * FROM empregado E INNER JOIN tipo_empregado T ON E.tipo_empregado = T.cod
+WHERE descricao LIKE 'contador' AND salario > 1000
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS) SELECT * FROM empregado E,
+(SELECT * FROM tipo_empregado T WHERE descricao LIKE 'contador') AS C
+WHERE salario > 1000;
+
